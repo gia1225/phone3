@@ -5,8 +5,358 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Phone · 故事模拟器</title>
-<link rel="stylesheet" href="style.css">
+<title>手机 · 故事模拟器</title>
+<style>
+:root{
+  --blue:#007aff;--red:#ff3b30;--green:#34c759;--gray:#8e8e93;--line:#ececec;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",Arial,sans-serif;
+  background:#111;display:flex;align-items:center;justify-content:center;color:#111;
+}
+button{font:inherit;border:0;background:none;padding:0;color:inherit;cursor:pointer}
+input,textarea{font:inherit}
+#phone{position:relative;width:100%;height:100%;max-width:420px;max-height:900px;background:#000;overflow:hidden}
+@media(min-width:460px){
+  #phone{border-radius:44px;height:92vh;box-shadow:0 0 0 10px #1c1c1e,0 24px 60px rgba(0,0,0,.8)}
+}
+
+/* ===== 状态栏 ===== */
+.status{position:absolute;top:0;left:0;right:0;height:44px;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:600;color:#fff;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+#phone[data-status="dark"] .status{color:#111;text-shadow:none}
+.status .r{display:flex;gap:6px;align-items:center;font-size:12px}
+.sig{display:flex;align-items:flex-end;gap:2px;height:10px}
+.sig i{width:3px;background:currentColor;border-radius:1px}
+.sig i:nth-child(1){height:3px}.sig i:nth-child(2){height:5px}
+.sig i:nth-child(3){height:7px}.sig i:nth-child(4){height:10px}
+.bat{width:20px;height:10px;border:1.5px solid currentColor;border-radius:3px;padding:1.5px}
+.bat b{display:block;height:100%;width:75%;background:currentColor;border-radius:1px}
+
+/* ===== 屏幕 ===== */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}
+.screen.active{display:flex}
+
+/* ===== 锁屏 ===== */
+#scr-lock{background:radial-gradient(120% 70% at 20% 0%,#3d4b73,#12141c 60%,#08090d)}
+.lock-top{position:absolute;top:92px;left:0;right:0;text-align:center;color:#fff}
+.lock-time{font-size:76px;font-weight:200;letter-spacing:-2px;line-height:1}
+.lock-date{font-size:15px;opacity:.8;margin-top:8px}
+.lock-bottom{position:absolute;left:0;right:0;bottom:30px;display:flex;flex-direction:column;align-items:center;color:#fff}
+.lock-tip{font-size:13px;opacity:.7;margin-bottom:14px;letter-spacing:.5px}
+.dots{display:flex;gap:20px;margin-bottom:12px}
+.dots span{width:13px;height:13px;border-radius:50%;border:1.5px solid rgba(255,255,255,.85);transition:.15s}
+.dots span.on{background:#fff}
+.dots.shake{animation:shake .45s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-7px)}80%{transform:translateX(7px)}}
+.lock-msg{height:18px;font-size:13px;color:#ff6b6b;margin-bottom:8px;font-weight:500}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 24px}
+.key{width:70px;height:70px;border-radius:50%;font-size:29px;font-weight:300;color:#fff;background:rgba(255,255,255,.13);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;transition:.1s}
+.key:active{background:rgba(255,255,255,.35);transform:scale(.94)}
+.key.ghost{visibility:hidden}
+.lock-hint{margin-top:16px;font-size:11px;color:rgba(255,255,255,.3)}
+
+/* ===== 主页 ===== */
+#scr-home{background:radial-gradient(120% 60% at 70% 0%,#2b3a63,transparent 55%),radial-gradient(90% 50% at 10% 20%,#52385a,transparent 55%),linear-gradient(180deg,#0e1016,#171c29 50%,#090a0e)}
+.home-scroll{flex:1;overflow-y:auto;padding:58px 0 8px}
+.home-scroll::-webkit-scrollbar{display:none}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 4px;padding:0 12px}
+.app{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s}
+.app:active{transform:scale(.88)}
+.icon{width:56px;height:56px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:700;box-shadow:0 3px 9px rgba(0,0,0,.35)}
+.app-name{font-size:10.5px;color:#fff;text-shadow:0 1px 3px #000;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.app-badge{position:absolute;top:-4px;right:calc(50% - 36px);min-width:18px;height:18px;border-radius:9px;background:#ff3b30;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #0e1016}
+.dock{margin:0 10px 16px;padding:10px 6px;border-radius:26px;background:rgba(255,255,255,.14);backdrop-filter:blur(20px);display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.dock .app-name{display:none}
+.dock .icon{width:54px;height:54px}
+
+/* ===== 应用外壳 ===== */
+#scr-app{background:#fff}
+.app-bar{flex:none;height:92px;padding:44px 10px 0 4px;display:flex;align-items:center;border-bottom:1px solid var(--line);background:#fff}
+.back{width:38px;height:38px;font-size:30px;color:var(--blue);display:flex;align-items:center;justify-content:center;line-height:1;flex:none}
+.app-bar h1{flex:1;margin:0;font-size:17px;font-weight:600;text-align:center;padding-right:38px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;position:relative}
+.app-body::-webkit-scrollbar{display:none}
+
+/* ===== 通用 ===== */
+.row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #f2f2f4;transition:background .1s}
+.row:active{background:#f5f5f7}
+.av{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:17px;overflow:hidden}
+.rmid{flex:1;min-width:0}
+.rname{font-size:16px;font-weight:500;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rprev{font-size:13px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rright{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.rtime{font-size:12px;color:var(--gray)}
+.nbadge{min-width:19px;height:19px;border-radius:10px;background:var(--blue);color:#fff;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.empty{padding:60px 24px;text-align:center;color:var(--gray);font-size:14px;line-height:1.8}
+.section-title{padding:16px 16px 6px;font-size:20px;font-weight:700}
+.hint{padding:0 16px 10px;font-size:13px;color:var(--gray);line-height:1.6}
+
+/* ===== 聊天 ===== */
+.chatview{display:flex;flex-direction:column;height:100%}
+.stream{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+.stream::-webkit-scrollbar{display:none}
+.bubble{max-width:76%;padding:9px 14px;border-radius:18px;font-size:15.5px;line-height:1.45;word-break:break-word;animation:pop .18s ease-out}
+.bubble.me{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:5px}
+.bubble.them{align-self:flex-start;background:#ebebed;color:#111;border-bottom-left-radius:5px}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.composer{flex:none;display:flex;gap:8px;padding:9px 12px 16px;border-top:1px solid var(--line);background:#fff;align-items:center}
+.composer input{flex:1;border:1px solid #ddd;border-radius:20px;padding:10px 15px;font-size:15.5px;outline:none;background:#fff}
+.composer button{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;flex:none}
+
+/* ===== 信息流 ===== */
+.post{padding:14px 16px;border-bottom:1px solid #f2f2f4}
+.post-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.post-head .av{width:40px;height:40px;font-size:15px}
+.post-meta b{font-size:15px;display:block}
+.post-meta span{font-size:12.5px;color:var(--gray)}
+.post-text{font-size:15px;line-height:1.5;margin:4px 0 10px;white-space:pre-wrap}
+.post-img{width:100%;aspect-ratio:16/10;border-radius:12px;margin-bottom:10px;overflow:hidden}
+.post-actions{display:flex;gap:26px}
+.post-actions button{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--gray)}
+.post-actions button.liked{color:#ff3b5c}
+
+/* ===== Instagram ===== */
+.ig-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px}
+.ig-logo{font-family:Georgia,serif;font-size:23px;font-weight:700;letter-spacing:-.5px}
+.ig-icons{font-size:18px;letter-spacing:6px}
+.ig-stories{display:flex;gap:14px;padding:10px 16px;overflow-x:auto}
+.ig-stories::-webkit-scrollbar{display:none}
+.story{flex:none;display:flex;flex-direction:column;align-items:center;gap:5px}
+.ring{width:58px;height:58px;border-radius:50%;padding:2.5px;background:linear-gradient(135deg,#feda75,#d62976,#4f5bd5);display:flex;align-items:center;justify-content:center}
+.ring>div{width:100%;height:100%;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:17px;color:#333}
+.story span{font-size:11px;color:#444;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ig-post{border-bottom:1px solid #efefef;padding-bottom:10px;margin-bottom:4px}
+.ig-head{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.ig-head .av{width:34px;height:34px;font-size:13px}
+.ig-user{font-size:14px;font-weight:600}
+.ig-loc{font-size:11.5px;color:var(--gray)}
+.ig-img{width:100%;aspect-ratio:1;overflow:hidden}
+.ig-img img{width:100%;height:100%;object-fit:cover}
+.ig-acts{display:flex;gap:16px;padding:10px 14px 4px}
+.ig-acts button{font-size:22px;line-height:1}
+.ig-acts button.liked{color:#ed4956}
+.ig-likes{padding:2px 14px;font-size:14px;font-weight:600}
+.ig-cap{padding:4px 14px 0;font-size:14px;line-height:1.45}
+img{display:block}
+
+/* ===== TikTok ===== */
+.tt{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;background:#000}
+.tt::-webkit-scrollbar{display:none}
+.tt-slide{height:100%;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:20px 16px 34px;color:#fff}
+.tt-side{position:absolute;right:12px;bottom:90px;display:flex;flex-direction:column;gap:18px;align-items:center}
+.tt-side button{font-size:26px;display:flex;flex-direction:column;align-items:center;gap:2px;color:#fff}
+.tt-side button span{font-size:11px}
+.tt-side button.liked{color:#fe2c55}
+.tt-user{font-weight:700;font-size:15px;margin-bottom:6px}
+.tt-text{font-size:14px;line-height:1.45;max-width:76%}
+
+/* ===== 小红书 ===== */
+.tabs{display:flex;gap:16px;padding:12px 16px 8px;font-size:14px;color:#888;border-bottom:1px solid #f0f0f0}
+.tabs .on{color:#111;font-weight:700}
+.xhs-grid{columns:2;column-gap:8px;padding:10px 8px 30px}
+.xhs-card{break-inside:avoid;margin-bottom:8px;border-radius:12px;overflow:hidden;background:#fafafa;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.xhs-cover{width:100%;display:block;aspect-ratio:3/4;overflow:hidden}
+.xhs-cover img{width:100%;height:100%;object-fit:cover}
+.xhs-body{padding:8px 10px 10px}
+.xhs-title{font-size:13.5px;line-height:1.4;margin-bottom:6px}
+.xhs-meta{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:#999}
+.xhs-meta button.liked{color:#ff2442}
+
+/* ===== 视频列表 / 播放器 ===== */
+.vid{display:flex;gap:12px;padding:10px 14px}
+.thumb{width:148px;height:84px;border-radius:10px;flex:none;position:relative;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.dur{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.75);color:#fff;font-size:11px;padding:1px 5px;border-radius:3px}
+.vinfo{flex:1;min-width:0}
+.vtitle{font-size:14px;line-height:1.35;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vsub{font-size:12px;color:var(--gray)}
+.player{background:#000;min-height:100%;display:flex;flex-direction:column}
+.pscreen{position:relative;width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#111}
+.pplay{font-size:44px;color:rgba(255,255,255,.9)}
+.pbar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.2)}
+.pfill{height:100%;width:0;background:#ff3b30;transition:width .3s linear}
+.pmeta{padding:16px;color:#fff}
+.pmeta h3{margin:0 0 8px;font-size:16px;line-height:1.4}
+.pmeta p{margin:0;font-size:12.5px;color:#aaa;line-height:1.6}
+
+/* ===== 备忘录 ===== */
+.note-row{padding:13px 16px;border-bottom:1px solid #f0f0f0}
+.note-row h4{margin:0 0 4px;font-size:15.5px;font-weight:600}
+.note-row p{margin:0;font-size:13px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.editor{padding:16px;display:flex;flex-direction:column;min-height:100%}
+.editor input{border:0;outline:none;font-size:21px;font-weight:700;padding:0 0 12px;width:100%;background:transparent}
+.editor textarea{flex:1;border:0;outline:none;resize:none;font-size:15.5px;line-height:1.7;width:100%;background:transparent;min-height:260px;font-family:inherit;color:#333}
+.editor-btn{margin:12px 16px;padding:12px;border-radius:10px;background:var(--blue);color:#fff;font-size:15px;font-weight:600;text-align:center}
+
+/* ===== 日历 ===== */
+.cal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+.cal-head h2{margin:0;font-size:20px}
+.cal-head button{font-size:20px;color:var(--blue);padding:0 12px}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);padding:0 8px 6px;font-size:11.5px;color:var(--gray);text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 8px 16px}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:14.5px;border-radius:50%;position:relative}
+.cal-day.other{color:#c7c7cc}
+.cal-day.today{background:var(--red);color:#fff;font-weight:600}
+.cal-day.sel{background:var(--blue);color:#fff}
+.cal-day.has::after{content:'';position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:var(--blue)}
+.cal-detail{padding:16px;border-top:1px solid #f0f0f0;font-size:14px;color:#333;line-height:1.7}
+
+/* ===== 时钟 ===== */
+.clock-big{padding:40px 0 10px;text-align:center;font-size:62px;font-weight:200;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.clock-sub{text-align:center;font-size:14px;color:var(--gray);margin-bottom:24px}
+.sw{padding:10px 24px 40px;text-align:center}
+.sw-time{font-size:48px;font-weight:250;font-variant-numeric:tabular-nums;letter-spacing:-1px;margin-bottom:22px}
+.sw-btns{display:flex;gap:18px;justify-content:center}
+.sw-btns button{width:80px;height:80px;border-radius:50%;font-size:15px;font-weight:500;background:#f2f2f7;color:#111;display:flex;align-items:center;justify-content:center}
+.sw-btns button.go{background:#e8f8ec;color:#34c759}
+.sw-btns button.stop{background:#ffebeb;color:#ff3b30}
+
+/* ===== 天气 ===== */
+.wx-hero{padding:40px 24px 30px;color:#fff;text-align:center;background:linear-gradient(180deg,#4a90d9,#2d5f9e)}
+.wx-city{font-size:22px;font-weight:500}
+.wx-temp{font-size:80px;font-weight:200;line-height:1.1;margin:6px 0}
+.wx-desc{font-size:15px;opacity:.9}
+.wx-card{margin:12px 16px;padding:16px;border-radius:16px;background:#f7f7fa}
+.wx-card h3{margin:0 0 12px;font-size:13px;color:var(--gray);font-weight:600}
+.wx-hours{display:flex;justify-content:space-between;text-align:center;font-size:13px}
+.wx-hours div{display:flex;flex-direction:column;gap:8px;align-items:center}
+.wx-days .d{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #ededf0;font-size:14px}
+.wx-days .d:last-child{border-bottom:none}
+.wx-days .d .dn{width:50px;color:#333}
+.wx-days .bar{flex:1;height:5px;border-radius:3px;margin:0 14px;background:linear-gradient(90deg,#5ac8fa,#ffcc00,#ff9500)}
+.wx-cities{display:flex;gap:8px;justify-content:center;padding:14px}
+.wx-cities button{padding:6px 16px;border-radius:16px;background:rgba(255,255,255,.2);color:#fff;font-size:13px}
+.wx-cities button.on{background:#fff;color:#2d5f9e;font-weight:600}
+
+/* ===== 音乐 ===== */
+.music-wrap{padding:26px 26px 40px;text-align:center}
+.music-cover{width:200px;height:200px;border-radius:18px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;font-size:56px;color:rgba(255,255,255,.9);box-shadow:0 16px 40px rgba(0,0,0,.28);transition:transform .4s}
+.music-cover.spin{animation:spin 9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.music-title{font-size:19px;font-weight:600;margin-bottom:5px}
+.music-artist{font-size:14px;color:var(--gray);margin-bottom:22px}
+.music-progress{height:4px;border-radius:2px;background:#e8e8ed;overflow:hidden;margin-bottom:8px}
+.music-progress b{display:block;height:100%;width:0;background:#111;transition:width .4s linear}
+.music-times{display:flex;justify-content:space-between;font-size:11.5px;color:var(--gray)}
+.music-ctrls{display:flex;align-items:center;justify-content:center;gap:34px;margin-top:24px;font-size:26px}
+.music-ctrls .play{font-size:40px}
+.music-list{margin-top:10px;border-top:1px solid #f0f0f0}
+
+/* ===== 相机 ===== */
+.cam{height:100%;background:#000;display:flex;flex-direction:column}
+.cam-view{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#2b3a4a,#111c26);color:rgba(255,255,255,.45);font-size:13px;overflow:hidden}
+.cam-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px);background-size:33.33% 33.33%}
+.cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.cam-flash.on{animation:flash .3s}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+.cam-bar{height:130px;display:flex;align-items:center;justify-content:space-around;background:#000}
+.shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}
+.shutter:active{background:#fff}
+
+/* ===== 电话 ===== */
+.dial-display{padding:26px 24px 10px;text-align:center;font-size:34px;font-weight:300;min-height:88px;letter-spacing:2px}
+.dial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px;padding:0 42px}
+.dial-key{aspect-ratio:1;border-radius:50%;background:#f2f2f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.dial-key b{font-size:26px;font-weight:400;line-height:1}
+.dial-key i{font-size:9px;letter-spacing:2px;color:var(--gray);font-style:normal}
+.dial-key:active{background:#dcdce2}
+.dial-call{display:flex;width:70px;height:70px;border-radius:50%;margin:20px auto 0;background:var(--green);color:#fff;font-size:30px;align-items:center;justify-content:center}
+
+/* ===== 游戏 ===== */
+.game-hero{padding:34px 22px;color:#fff;text-align:center}
+.game-hero h2{margin:0 0 8px;font-size:24px;letter-spacing:2px}
+.game-hero p{margin:0;font-size:13px;opacity:.85}
+.game-btn{display:block;width:80%;margin:20px auto;padding:15px;border-radius:10px;font-size:16px;font-weight:600;color:#fff;background:linear-gradient(90deg,#c8a24a,#e0c274);box-shadow:0 8px 20px rgba(200,162,74,.35);text-align:center}
+.game-btn:active{transform:scale(.97)}
+.game-btn.red{background:linear-gradient(90deg,#ff4655,#ff7a85);box-shadow:0 8px 20px rgba(255,70,85,.35)}
+.match-box{padding:26px 24px;text-align:center}
+.match-bar{height:8px;border-radius:4px;background:#eee;overflow:hidden;margin:18px 0 10px}
+.match-bar b{display:block;height:100%;width:0;background:#c8a24a;transition:width .3s}
+.agent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+.agent{aspect-ratio:3/4;border-radius:10px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:8px;color:#fff;font-size:12px;font-weight:600}
+.agent.sel{outline:2.5px solid #ff4655;outline-offset:2px}
+
+/* ===== Chrome ===== */
+.chrome-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f2f2f7;border-bottom:1px solid #e5e5ea}
+.chrome-bar input{flex:1;border-radius:18px;border:0;padding:9px 16px;font-size:14px;background:#fff;outline:none}
+.chrome-bar button{color:#4285f4;font-size:14px;font-weight:600}
+.chrome-home{padding:30px 20px;text-align:center}
+.chrome-logo{font-size:32px;font-weight:600;letter-spacing:-1px;margin-bottom:24px}
+.chrome-logo span:nth-child(1){color:#4285f4}
+.chrome-logo span:nth-child(2){color:#ea4335}
+.chrome-logo span:nth-child(3){color:#fbbc05}
+.chrome-logo span:nth-child(4){color:#4285f4}
+.chrome-logo span:nth-child(5){color:#34a853}
+.chrome-logo span:nth-child(6){color:#ea4335}
+.chrome-sc{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 10px;margin-top:10px}
+.chrome-sc div{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;color:#444}
+.chrome-sc .sq{width:50px;height:50px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 1px 5px rgba(0,0,0,.1)}
+.sr{padding:14px 16px;border-bottom:1px solid #f0f0f0}
+.sr h4{margin:0 0 4px;font-size:16px;color:#1a0dab;font-weight:500}
+.sr .url{font-size:12px;color:#006621;margin-bottom:5px}
+.sr p{margin:0;font-size:13.5px;color:#545454;line-height:1.5}
+
+/* ===== 地图 ===== */
+.map-wrap{position:relative;height:100%;overflow:hidden;background:#e8eef2}
+.map-canvas{position:absolute;width:200%;height:200%;left:-50%;top:-50%;background:repeating-linear-gradient(0deg,transparent 0 58px,#cfd8dd 58px 60px),repeating-linear-gradient(90deg,transparent 0 58px,#cfd8dd 58px 60px),radial-gradient(circle at 40% 40%,#c6e3c9 0%,transparent 26%),radial-gradient(circle at 72% 66%,#c6e3c9 0%,transparent 22%),#e8eef2}
+.map-pin{position:absolute;transform:translate(-50%,-100%);font-size:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+.map-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:16px 18px 26px;box-shadow:0 -6px 24px rgba(0,0,0,.13)}
+.map-sheet h3{margin:0 0 4px;font-size:17px}
+.map-sheet p{margin:0;font-size:13px;color:var(--gray);line-height:1.6}
+
+/* ===== 文件 ===== */
+.file-row{display:flex;align-items:center;gap:13px;padding:12px 16px;border-bottom:1px solid #f3f3f5}
+.file-ic{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;background:#eaf2ff;color:#0a84ff;flex:none}
+.file-name{font-size:15px}
+.file-sub{font-size:12px;color:var(--gray);margin-top:2px}
+
+/* ===== 豆瓣 ===== */
+.db-row{display:flex;gap:13px;padding:14px 16px;border-bottom:1px solid #f3f3f5}
+.db-cover{width:64px;height:90px;border-radius:5px;flex:none;overflow:hidden}
+.db-cover img{width:100%;height:100%;object-fit:cover}
+.db-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.db-meta{font-size:12.5px;color:var(--gray);margin-bottom:6px}
+.stars{color:#f5a623;font-size:13px;letter-spacing:1px}
+.db-quote{font-size:12.5px;color:#666;margin-top:5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ===== 来电 ===== */
+#scr-call{background:radial-gradient(90% 60% at 50% 0%,#3a3f52,#16181f 70%);color:#fff}
+.call-inner{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px 50px;width:100%}
+.call-state{font-size:14px;opacity:.7;letter-spacing:3px;margin-bottom:22px}
+.call-avatar{width:112px;height:112px;border-radius:50%;background:#5b8def;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:600;margin-bottom:20px;animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.25)}70%{box-shadow:0 0 0 26px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+.call-name{font-size:30px;font-weight:500;margin-bottom:8px}
+.call-sub{font-size:14px;opacity:.6;margin-bottom:52px}
+.call-actions{display:flex;gap:74px}
+.cbw{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:12.5px;opacity:.9}
+.cbtn{width:74px;height:74px;border-radius:50%;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .12s}
+.cbtn:active{transform:scale(.92)}
+.cbtn.decline,.cbtn.hangup{background:#ff3b30}
+.cbtn.accept{background:#34c759}
+.hidden{display:none!important}
+.call-active{display:flex;flex-direction:column;align-items:center;width:100%}
+.call-timer{font-size:15px;opacity:.7;margin-bottom:16px;font-variant-numeric:tabular-nums}
+.call-lines{width:100%;max-height:230px;overflow-y:auto;margin-bottom:34px;display:flex;flex-direction:column;gap:10px}
+.call-lines::-webkit-scrollbar{display:none}
+.call-line{background:rgba(255,255,255,.13);border-radius:14px;padding:11px 15px;font-size:15px;line-height:1.5;animation:pop .22s ease-out}
+
+/* ===== 图片查看器 ===== */
+#viewer{position:absolute;inset:0;z-index:90;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center}
+#viewer.show{display:flex;animation:fade .18s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.vimg{width:88%;max-height:64vh;aspect-ratio:3/4;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);font-weight:600;font-size:15px;letter-spacing:2px}
+.vimg img{width:100%;height:100%;object-fit:contain}
+.vcap{color:#fff;font-size:14px;margin-top:18px;opacity:.85;text-align:center;padding:0 24px;line-height:1.6}
+.vclose{position:absolute;top:56px;right:20px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center}
+.vnav{position:absolute;bottom:40px;left:0;right:0;display:flex;justify-content:space-between;padding:0 20px}
+.vnav button{color:#fff;font-size:28px;opacity:.75;padding:8px 20px}
+
+/* ===== Toast ===== */
+#toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%) translateY(14px);background:rgba(0,0,0,.84);color:#fff;font-size:13.5px;padding:10px 20px;border-radius:20px;opacity:0;pointer-events:none;transition:.24s;z-index:95;max-width:80%;text-align:center;line-height:1.45}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
 </head>
 <body>
 
@@ -15,53 +365,44 @@
   <!-- 状态栏 -->
   <div class="status">
     <span id="statTime">9:41</span>
-    <span class="stat-right">
+    <span class="r">
       <span class="sig"><i></i><i></i><i></i><i></i></span>
-      <span class="wifi">◗</span>
       <span class="bat"><b></b></span>
     </span>
   </div>
 
-  <!-- ========== 锁屏 ========== -->
+  <!-- 锁屏 -->
   <section id="scr-lock" class="screen active">
-    <div class="lock-bg"></div>
     <div class="lock-top">
       <div class="lock-time" id="lockTime">9:41</div>
       <div class="lock-date" id="lockDate">1月1日 星期一</div>
     </div>
     <div class="lock-bottom">
-      <div class="lock-title">输入密码</div>
-      <div class="dots" id="dots">
-        <span></span><span></span><span></span><span></span>
-      </div>
+      <div class="lock-tip">输入密码</div>
+      <div class="dots" id="dots"><span></span><span></span><span></span><span></span></div>
       <div class="lock-msg" id="lockMsg"></div>
       <div class="keypad" id="keypad"></div>
       <div class="lock-hint">默认密码 1234</div>
     </div>
   </section>
 
-  <!-- ========== 主页 ========== -->
+  <!-- 主页 -->
   <section id="scr-home" class="screen">
-    <div class="home-bg"></div>
-    <div class="home-page">
-      <div class="app-grid" id="appGrid"></div>
-    </div>
+    <div class="home-scroll"><div class="grid" id="appGrid"></div></div>
     <div class="dock" id="dock"></div>
   </section>
 
-  <!-- ========== 应用容器 ========== -->
+  <!-- 应用 -->
   <section id="scr-app" class="screen">
     <header class="app-bar">
-      <button class="nav-back" id="btnBack">‹</button>
+      <button class="back" id="btnBack">‹</button>
       <h1 id="appTitle">应用</h1>
-      <div class="app-actions" id="appActions"></div>
     </header>
     <div class="app-body" id="appBody"></div>
   </section>
 
-  <!-- ========== 来电 ========== -->
-  <section id="scr-call" class="screen call-screen">
-    <div class="call-bg"></div>
+  <!-- 来电 -->
+  <section id="scr-call" class="screen">
     <div class="call-inner">
       <div class="call-state" id="callState">来电</div>
       <div class="call-avatar" id="callAvatar">林</div>
@@ -69,12 +410,12 @@
       <div class="call-sub" id="callSub">邀请你进行 FaceTime 通话</div>
 
       <div class="call-actions" id="callActions">
-        <div class="call-btn-wrap">
-          <button class="call-btn decline" id="btnDecline">✕</button>
+        <div class="cbw">
+          <button class="cbtn decline" data-act="declineCall">✕</button>
           <span>拒绝</span>
         </div>
-        <div class="call-btn-wrap">
-          <button class="call-btn accept" id="btnAccept">✆</button>
+        <div class="cbw">
+          <button class="cbtn accept" data-act="acceptCall">✆</button>
           <span>接听</span>
         </div>
       </div>
@@ -82,22 +423,661 @@
       <div class="call-active hidden" id="callActive">
         <div class="call-timer" id="callTimer">00:00</div>
         <div class="call-lines" id="callLines"></div>
-        <div class="call-btn-wrap hangup-wrap">
-          <button class="call-btn hangup" id="btnHangup">✕</button>
+        <div class="cbw" style="margin-top:10px">
+          <button class="cbtn hangup" data-act="hangupCall">✕</button>
           <span>挂断</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 图片放大查看器 -->
-  <div class="viewer" id="viewer"></div>
+  <!-- 图片查看器 -->
+  <div id="viewer"></div>
 
-  <!-- 提示条 -->
-  <div class="toast" id="toast"></div>
-
+  <!-- Toast -->
+  <div id="toast"></div>
 </div>
 
-<script src="app.js"></script>
-</body>
-</html>
+<script>
+(function () {
+  'use strict';
+
+  /* ============ 基础工具 ============ */
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+  /* ============ 全局状态 ============ */
+  var state = {
+    pin: '',
+    app: null,
+    chat: null,
+    liked: new Set(),
+    noteIdx: null,
+    calM: new Date().getMonth(),
+    calY: new Date().getFullYear(),
+    calSel: null,
+    wxCity: 0,
+    musicOn: false,
+    musicPos: 0,
+    musicIdx: 0,
+    stop: { running: false, ms: 0 },
+    phoneTab: 'recents',
+    dialNum: '',
+    agentSel: null,
+    viewerList: null,
+    viewerIdx: 0,
+    camCount: 0,
+    mapPin: null,
+    playerOn: false,
+    playerPos: 0,
+    curVideo: null
+  };
+
+  var timers = [];
+  function clearTimers() {
+    timers.forEach(function (t) { clearInterval(t); clearTimeout(t); });
+    timers = [];
+  }
+  function on(fn, ms) { var t = setInterval(fn, ms); timers.push(t); return t; }
+  function st(fn, ms) { var t = setTimeout(fn, ms); timers.push(t); return t; }
+
+  function toast(msg) {
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._h);
+    t._h = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+
+  /* ============ 屏幕切换 ============ */
+  function showScreen(name) {
+    clearTimers();
+    $$('.screen').forEach(function (s) { s.classList.remove('active'); });
+    var el = document.getElementById('scr-' + name);
+    if (el) el.classList.add('active');
+    $('#phone').dataset.status = (name === 'app') ? 'dark' : 'light';
+  }
+
+  /* ============ 时钟 ============ */
+  function tick() {
+    var d = new Date();
+    var t = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var el = $('#statTime'); if (el) el.textContent = t;
+    var lt = $('#lockTime'); if (lt) lt.textContent = t;
+    var ld = $('#lockDate');
+    if (ld) ld.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + '日一二三四五六'.charAt(d.getDay());
+    var cb = $('#clockBig');
+    if (cb) cb.textContent = t + ':' + pad(d.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* ============ 锁屏 ============ */
+  function renderDots() {
+    $$('#dots span').forEach(function (s, i) {
+      s.classList.toggle('on', i < state.pin.length);
+    });
+  }
+
+  function checkPin() {
+    if (state.pin === '1234') {
+      state.pin = ''; renderDots();
+      $('#lockMsg').textContent = '';
+      showScreen('home');
+    } else {
+      $('#lockMsg').textContent = '密码错误';
+      var dots = $('#dots');
+      dots.classList.add('shake');
+      st(function () {
+        dots.classList.remove('shake');
+        state.pin = ''; renderDots();
+        $('#lockMsg').textContent = '';
+      }, 650);
+    }
+  }
+
+  function initLock() {
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
+    $('#keypad').innerHTML = keys.map(function (k) {
+      return k === '' ? '<span class="key ghost"></span>' : '<button class="key" data-k="' + k + '">' + k + '</button>';
+    }).join('');
+
+    $('#keypad').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-k]');
+      if (!b) return;
+      var k = b.dataset.k;
+      if (k === '⌫') {
+        state.pin = state.pin.slice(0, -1);
+        renderDots();
+        return;
+      }
+      if (state.pin.length >= 4) return;
+      state.pin += k;
+      renderDots();
+      if (state.pin.length === 4) st(checkPin, 120);
+    });
+  }
+
+  /* ============ 应用列表 ============ */
+  var APPS = [
+    { id: 'wechat',   n: '微信',        i: '微', c: 'linear-gradient(160deg,#3ddc84,#07c160)', b: 2 },
+    { id: 'qq',       n: 'QQ',          i: 'Q',  c: 'linear-gradient(160deg,#2ec8ff,#12b7f5)' },
+    { id: 'kakao',    n: 'KakaoTalk',   i: 'K',  c: 'linear-gradient(160deg,#ffe94a,#f7e000)', tc: '#3c1e1e' },
+    { id: 'ig',       n: 'Instagram',   i: '◎',  c: 'linear-gradient(135deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5)' },
+    { id: 'x',        n: 'X',           i: '𝕏',  c: 'linear-gradient(160deg,#2c2c2e,#000)' },
+    { id: 'threads',  n: 'Threads',     i: '@',  c: 'linear-gradient(160deg,#3a3a3c,#000)' },
+    { id: 'youtube',  n: 'YouTube',     i: '▶',  c: 'linear-gradient(160deg,#ff4b4b,#e00)' },
+    { id: 'tiktok',   n: 'TikTok',      i: '♪',  c: 'linear-gradient(160deg,#25f4ee,#fe2c55)' },
+    { id: 'xhs',      n: '小红书',      i: '书', c: 'linear-gradient(160deg,#ff5b6e,#ff2442)', b: 5 },
+    { id: 'weibo',    n: '微博',        i: '微', c: 'linear-gradient(160deg,#ff5c6c,#e6162d)' },
+    { id: 'douban',   n: '豆瓣',        i: '豆', c: 'linear-gradient(160deg,#4ec05f,#2e963d)' },
+    { id: 'notes',    n: '备忘录',      i: '✎',  c: 'linear-gradient(160deg,#ffe873,#ffd60a)', tc: '#5a4300' },
+    { id: 'calendar', n: '日历',        i: '📅', c: 'linear-gradient(160deg,#fff,#f0f0f0)', tc: '#333' },
+    { id: 'clock',    n: '时钟',        i: '⏱',  c: 'linear-gradient(160deg,#3a3a3c,#1c1c1e)' },
+    { id: 'weather',  n: '天气',        i: '☀',  c: 'linear-gradient(160deg,#6ec2ff,#1e6fd9)' },
+    { id: 'music',    n: '音乐',        i: '♫',  c: 'linear-gradient(160deg,#ff5c7a,#fa243c)' },
+    { id: 'photos',   n: '照片',        i: '❀',  c: 'linear-gradient(160deg,#fff,#f2f2f7)', tc: '#333' },
+    { id: 'camera',   n: '相机',        i: '◉',  c: 'linear-gradient(160deg,#8e8e93,#4a4a4f)' },
+    { id: 'phone',    n: '电话',        i: '✆',  c: 'linear-gradient(160deg,#5fdd7c,#34c759)', b: 1 },
+    { id: 'messages', n: '信息',        i: '💬', c: 'linear-gradient(160deg,#5fdd7c,#34c759)', b: 1 },
+    { id: 'hok',      n: '王者荣耀',    i: '王', c: 'linear-gradient(160deg,#e0c274,#a8813a)', tc: '#3b2c0a' },
+    { id: 'valorant', n: '掌上无畏契约', i: 'V', c: 'linear-gradient(160deg,#ff6a75,#e02232)' },
+    { id: 'chrome',   n: 'Chrome',      i: '◐',  c: 'linear-gradient(160deg,#8ab4f8,#4285f4)' },
+    { id: 'bili',     n: '哔哩哔哩',    i: 'B',  c: 'linear-gradient(160deg,#ffa5c0,#fb7299)' },
+    { id: 'maps',     n: '地图',        i: '⌖',  c: 'linear-gradient(160deg,#7ee39a,#34c759)' },
+    { id: 'files',    n: '文件',        i: '📁', c: 'linear-gradient(160deg,#5aa9ff,#0a84ff)' }
+  ];
+  var DOCK = ['phone', 'messages', 'chrome', 'camera'];
+
+  function getApp(id) {
+    for (var i = 0; i < APPS.length; i++) if (APPS[i].id === id) return APPS[i];
+    return { id: id, n: id, i: '?', c: '#666' };
+  }
+
+  function buildHome() {
+    $('#appGrid').innerHTML = APPS.map(function (a) {
+      return '<button class="app" data-app="' + a.id + '">' +
+        '<span class="icon" style="background:' + a.c + ';color:' + (a.tc || '#fff') + '">' + a.i + '</span>' +
+        '<span class="app-name">' + esc(a.n) + '</span>' +
+        (a.b ? '<span class="app-badge">' + a.b + '</span>' : '') +
+        '</button>';
+    }).join('');
+
+    $('#dock').innerHTML = DOCK.map(function (id) {
+      var a = getApp(id);
+      return '<button class="app" data-app="' + a.id + '">' +
+        '<span class="icon" style="background:' + a.c + ';color:' + (a.tc || '#fff') + '">' + a.i + '</span>' +
+        '</button>';
+    }).join('');
+  }
+
+  /* ============ 聊天数据 ============ */
+  var CHAT_APPS = {
+    messages: {
+      title: '信息',
+      list: [
+        { id: 'mom',     name: '妈妈',     av: '妈', color: '#f2a15c', time: '刚刚', prev: '你接电话了吗？', unread: 1 },
+        { id: 'linshen', name: '林深',     av: '林', color: '#5b8def', time: '昨天', prev: '照片我放在相册里了' },
+        { id: 'unknown', name: '未知号码', av: '?',  color: '#8e8e93', time: '周三', prev: '你知道那件事吧' }
+      ],
+      chats: {
+        mom: {
+          name: '妈妈', av: '妈', color: '#f2a15c',
+          msgs: [
+            { me: false, t: '吃饭了吗？' },
+            { me: true,  t: '吃了' },
+            { me: false, t: '你爸今天又去老房子了' },
+            { me: false, t: '要是接到陌生号码，先别接。' }
+          ],
+          rules: [
+            { k: '照片',   v: '照片？你翻相册了？' },
+            { k: '电话',   v: '谁打来的？你接了吗？' },
+            { k: '老房子', v: '那房子……空了三年了。' },
+            { k: '爸',     v: '别跟你爸提这事。' }
+          ],
+          fb: ['嗯，早点睡。', '别想太多。', '我明天再打给你。']
+        },
+        linshen: {
+          name: '林深', av: '林', color: '#5b8def',
+          msgs: [
+            { me: false, t: '你终于回我消息了' },
+            { me: true,  t: '抱歉，手机刚修好' },
+            { me: false, t: '照片我放在相册了，第三张' },
+            { me: false, t: '你看完就知道了' }
+          ],
+          rules: [
+            { k: '照片',   v: '对，第三张。放大看右下角。' },
+            { k: '第三张', v: '右下角，有个日期。' },
+            { k: '日期',   v: '那天你根本不在家。' },
+            { k: '不在家', v: '所以——那天是谁发的朋友圈？' }
+          ],
+          fb: ['你先看照片。', '别急，慢慢来。', '我在。']
+        },
+        unknown: {
+          name: '未知号码', av: '?', color: '#8e8e93',
+          msgs: [
+            { me: false, t: '你换了号码？' },
+            { me: false, t: '我是三年前那个晚上的人。' }
+          ],
+          rules: [
+            { k: '谁',   v: '你心里清楚。' },
+            { k: '晚上', v: '那晚下着雨，你记得的。' },
+            { k: '照片', v: '照片不会说谎。' },
+            { k: '林深', v: '别信他。' }
+          ],
+          fb: ['……', '你会想起来的。', '别挂。']
+        }
+      }
+    },
+
+    wechat: {
+      title: '微信',
+      list: [
+        { id: 'w1', name: '设计部·周会',   av: '周', color: '#07c160', time: '10:24', prev: '李工：文档我放共享了', unread: 3 },
+        { id: 'w2', name: '林深',           av: '林', color: '#5b8def', time: '昨天', prev: '在吗' },
+        { id: 'w3', name: '房东王姨',       av: '王', color: '#e6a23c', time: '周一', prev: '下个月房租记得转哦' },
+        { id: 'w4', name: '文件传输助手',   av: '📄', color: '#8e8e93', time: '周一', prev: '[图片]' }
+      ],
+      chats: {
+        w1: {
+          name: '设计部·周会', av: '周', color: '#07c160',
+          msgs: [
+            { me: false, t: '李工：这版稿子今天能出吗' },
+            { me: true,  t: '晚一点，我再调下颜色' },
+            { me: false, t: '李工：行，明早对一下' }
+          ],
+          rules: [
+            { k: '好',   v: '李工：收到 👌' },
+            { k: '颜色', v: '李工：参考上次那版就行' }
+          ],
+          fb: ['收到', '嗯嗯', '👍']
+        },
+        w2: {
+          name: '林深', av: '林', color: '#5b8def',
+          msgs: [
+            { me: false, t: '在吗' },
+            { me: false, t: '微信聊不方便，去信息里说' }
+          ],
+          rules: [{ k: '信息', v: '对，那边说。' }],
+          fb: ['嗯', '在的']
+        },
+        w3: {
+          name: '房东王姨', av: '王', color: '#e6a23c',
+          msgs: [
+            { me: false, t: '下个月房租记得转哦' },
+            { me: true,  t: '好的王姨' }
+          ],
+          rules: [],
+          fb: ['好嘞~', '收到啦']
+        },
+        w4: {
+          name: '文件传输助手', av: '📄', color: '#8e8e93',
+          msgs: [{ me: true, t: '老房子的平面图.pdf' }],
+          rules: [],
+          fb: ['（自动保存）']
+        }
+      }
+    },
+
+    qq: {
+      title: 'QQ',
+      list: [
+        { id: 'q1', name: '高中三班群',     av: '群', color: '#12b7f5', time: '12:03', prev: '大鹏：周末约球啊', unread: 12 },
+        { id: 'q2', name: '苏晚',           av: '苏', color: '#ff7aa2', time: '昨天', prev: '你还留着那张照片吗' },
+        { id: 'q3', name: '学生会·宣传部', av: '宣', color: '#7c6cf5', time: '周三', prev: '换届名单已发' }
+      ],
+      chats: {
+        q1: {
+          name: '高中三班群', av: '群', color: '#12b7f5',
+          msgs: [
+            { me: false, t: '大鹏：周末约球啊' },
+            { me: false, t: '小鹿：+1' },
+            { me: true,  t: '这周可能不行' }
+          ],
+          rules: [],
+          fb: ['大鹏：行吧', '小鹿：下次一定', '哈哈哈']
+        },
+        q2: {
+          name: '苏晚', av: '苏', color: '#ff7aa2',
+          msgs: [
+            { me: false, t: '你还留着那张照片吗' },
+            { me: true,  t: '哪张' },
+            { me: false, t: '老房子门口那张。' }
+          ],
+          rules: [
+            { k: '照片',   v: '我记得那天没下雨。' },
+            { k: '老房子', v: '你们搬走之后，我就没再去过。' },
+            { k: '雨',     v: '……你确定？' }
+          ],
+          fb: ['嗯。', '算了，不提了。', '你保重。']
+        },
+        q3: {
+          name: '学生会·宣传部', av: '宣', color: '#7c6cf5',
+          msgs: [{ me: false, t: '换届名单已发群文件' }],
+          rules: [],
+          fb: ['收到']
+        }
+      }
+    },
+
+    kakao: {
+      title: 'KakaoTalk',
+      list: [
+        { id: 'k1', name: '민지',       av: '민', color: '#ffd43b', tc: '#3c1e1e', time: '오후 2:10', prev: '내일 시간 괜찮아?', unread: 2 },
+        { id: 'k2', name: '스터디 팀',  av: 'S',  color: '#74c0fc', time: '오전 11:02', prev: '자료 올렸어요' },
+        { id: 'k3', name: '엄마',       av: '엄', color: '#ffa8a8', time: '어제', prev: '밥은 먹었니' }
+      ],
+      chats: {
+        k1: {
+          name: '민지', av: '민', color: '#ffd43b', tc: '#3c1e1e',
+          msgs: [
+            { me: false, t: '내일 시간 괜찮아?' },
+            { me: true,  t: '응, 왜?' },
+            { me: false, t: '그 사진 얘기 좀 하자.' }
+          ],
+          rules: [
+            { k: '사진', v: '역시 기억하고 있구나.' },
+            { k: '시간', v: '오후 세 시 어때?' }
+          ],
+          fb: ['응.', '알겠어.', '이따 봐.']
+        },
+        k2: {
+          name: '스터디 팀', av: 'S', color: '#74c0fc',
+          msgs: [{ me: false, t: '자료 올렸어요' }],
+          rules: [],
+          fb: ['확인했습니다 👍']
+        },
+        k3: {
+          name: '엄마', av: '엄', color: '#ffa8a8',
+          msgs: [
+            { me: false, t: '밥은 먹었니' },
+            { me: true,  t: '응 먹었어' }
+          ],
+          rules: [],
+          fb: ['다행이다.']
+        }
+      }
+    }
+  };
+
+  /* ============ 聊天渲染 ============ */
+  function chatListHTML(appId) {
+    var app = CHAT_APPS[appId];
+    return '<div>' + app.list.map(function (c) {
+      return '<div class="row" data-act="openChat" data-app="' + appId + '" data-id="' + c.id + '">' +
+        '<div class="av" style="background:' + c.color + ';color:' + (c.tc || '#fff') + '">' + esc(c.av) + '</div>' +
+        '<div class="rmid">' +
+          '<div class="rname">' + esc(c.name) + '</div>' +
+          '<div class="rprev">' + esc(c.prev) + '</div>' +
+        '</div>' +
+        '<div class="rright">' +
+          '<div class="rtime">' + esc(c.time) + '</div>' +
+          (c.unread ? '<div class="nbadge">' + c.unread + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function bubbleHTML(m) {
+    return '<div class="bubble ' + (m.me ? 'me' : 'them') + '">' + esc(m.t) + '</div>';
+  }
+
+  function scrollStream() {
+    var s = $('#stream');
+    if (s) s.scrollTop = s.scrollHeight;
+  }
+
+  function renderChatView() {
+    var c = state.chat;
+    $('#appBody').innerHTML =
+      '<div class="chatview">' +
+        '<div class="stream" id="stream">' + c.msgs.map(bubbleHTML).join('') + '</div>' +
+        '<form class="composer" data-form="send" autocomplete="off">' +
+          '<input id="chatInput" placeholder="iMessage" enterkeyhint="send">' +
+          '<button type="submit">↑</button>' +
+        '</form>' +
+      '</div>';
+    scrollStream();
+  }
+
+  function getReply(src, text) {
+    var rules = src.rules || [];
+    for (var i = 0; i < rules.length; i++) {
+      if (text.indexOf(rules[i].k) !== -1) return rules[i].v;
+    }
+    return rnd(src.fb || ['嗯嗯', '好的', '收到']);
+  }
+
+  /* ============ 照片数据 ============ */
+  // 如需使用自己的图片，把 grad 换成 src:'assets/xxx.jpg' 即可
+  var PHOTOS = [
+    { id: 'p1', label: '老房子 · 外墙', grad: 'linear-gradient(135deg,#3a6073,#16222a)', cap: '2024.03.02 · 老房子外墙' },
+    { id: 'p2', label: '雨天 · 街道',   grad: 'linear-gradient(135deg,#8e9eab,#eef2f3)', cap: '2024.03.02 · 雨天的街道' },
+    { id: 'p3', label: '第三张 · 门口', grad: 'linear-gradient(135deg,#403b4a,#c4b7a6)', cap: '2024.03.02 19:41 · 家门口（右下角有日期）' },
+    { id: 'p4', label: '合影',          grad: 'linear-gradient(135deg,#ee9ca7,#ffdde1)', cap: '2021.06.18 · 三个人的合影' },
+    { id: 'p5', label: '夜路',          grad: 'linear-gradient(135deg,#6a3093,#a044ff)', cap: '2024.03.02 · 回家的路' },
+    { id: 'p6', label: '窗台',          grad: 'linear-gradient(135deg,#ffb347,#ffcc33)', cap: '2023.11.09 · 窗台上的光' },
+    { id: 'p7', label: '海',            grad: 'linear-gradient(135deg,#43cea2,#185a9d)', cap: '2022.08.01 · 那年夏天' },
+    { id: 'p8', label: '纸条',          grad: 'linear-gradient(135deg,#654ea3,#eaafc8)', cap: '2024.03.03 · 门缝里的纸条' },
+    { id: 'p9', label: '空房',          grad: 'linear-gradient(135deg,#232526,#414345)', cap: '2024.03.02 · 空了很久的房间' }
+  ];
+
+  /* ============ 来电数据 ============ */
+  var CONTACTS = {
+    mom: {
+      name: '妈妈', av: '妈', color: '#f2a15c', sub: 'FaceTime 通话',
+      lines: [
+        '喂？你终于接了。',
+        '你爸今天又去老房子了，到现在没回来。',
+        '你要是看到什么不对劲的东西，先别管，回家再说。'
+      ]
+    },
+    linshen: {
+      name: '林深', av: '林', color: '#5b8def', sub: '语音通话',
+      lines: [
+        '你终于接了。',
+        '相册第三张，右下角有日期。',
+        '那天你根本不在家——那照片是谁拍的？'
+      ]
+    },
+    unknown: {
+      name: '未知号码', av: '?', color: '#8e8e93', sub: '来电',
+      lines: [
+        '……你听得见吗？',
+        '别翻相册了。',
+        '那天晚上，站在门口的人不是林深。'
+      ]
+    }
+  };
+
+  /* ============ 图片查看器 ============ */
+  function openViewer(list, idx) {
+    state.viewerList = list;
+    state.viewerIdx = idx;
+    renderViewer();
+    $('#viewer').classList.add('show');
+  }
+
+  function renderViewer() {
+    var list = state.viewerList;
+    if (!list || !list.length) return;
+    var i = (state.viewerIdx + list.length) % list.length;
+    state.viewerIdx = i;
+    var p = list[i];
+
+    var media = p.src
+      ? '<img src="' + p.src + '" alt="">'
+      : '<div style="width:100%;height:100%;background:' + p.grad + ';display:flex;align-items:center;justify-content:center">' + esc(p.label || '') + '</div>';
+
+    $('#viewer').innerHTML =
+      '<button class="vclose" data-act="closeViewer">✕</button>' +
+      '<div class="vimg">' + media + '</div>' +
+      '<div class="vcap">' + esc(p.cap || '') + '　(' + (i + 1) + '/' + list.length + ')</div>' +
+      '<div class="vnav">' +
+        '<button data-act="prevPhoto">‹</button>' +
+        '<button data-act="nextPhoto">›</button>' +
+      '</div>';
+  }
+
+  /* ============ 渲染器 ============ */
+  var RENDER = {};
+  var ACTIONS = {};
+  var FORMS = {};
+
+  /* --- 聊天列表 --- */
+  ['messages', 'wechat', 'qq', 'kakao'].forEach(function (id) {
+    RENDER[id] = function () { return chatListHTML(id); };
+  });
+
+  /* --- Instagram --- */
+  var IG_POSTS = [
+    { id: 1, user: 'lin_shen_',   av: '林', color: '#5b8def', loc: '老城区 · 长乐街', grad: 'linear-gradient(135deg,#667eea,#764ba2)', cap: '雨停了。老地方见。', likes: 128 },
+    { id: 2, user: 'suwan_',      av: '苏', color: '#ff7aa2', loc: '',                grad: 'linear-gradient(135deg,#f6d365,#fda085)', cap: '翻到一张旧照片，有点恍惚。', likes: 342 },
+    { id: 3, user: 'mom_kitchen', av: '妈', color: '#f2a15c', loc: '家',              grad: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)', cap: '今天炖了汤，回来喝。', likes: 56 }
+  ];
+
+  RENDER.ig = function () {
+    return '<div class="ig-top"><span class="ig-logo">Instagram</span><span class="ig-icons">♡ ✆</span></div>' +
+      '<div class="ig-stories">' +
+        ['你', 'lin_shen_', 'mom_kitchen', 'suwan_', 'studio'].map(function (n) {
+          return '<div class="story"><div class="ring"><div>' + esc(n.charAt(0).toUpperCase()) + '</div></div><span>' + esc(n) + '</span></div>';
+        }).join('') +
+      '</div>' +
+      IG_POSTS.map(function (p) {
+        var key = 'ig:' + p.id;
+        var liked = state.liked.has(key);
+        var media = p.src
+          ? '<img src="' + p.src + '" alt="">'
+          : '<div style="width:100%;height:100%;background:' + p.grad + '"></div>';
+        return '<div class="ig-post">' +
+          '<div class="ig-head">' +
+            '<div class="av" style="background:' + p.color + '">' + esc(p.av) + '</div>' +
+            '<div><div class="ig-user">' + esc(p.user) + '</div>' + (p.loc ? '<div class="ig-loc">' + esc(p.loc) + '</div>' : '') + '</div>' +
+          '</div>' +
+          '<div class="ig-img" data-act="viewIg" data-id="' + p.id + '">' + media + '</div>' +
+          '<div class="ig-acts">' +
+            '<button data-act="igLike" data-id="' + p.id + '" data-count="' + p.likes + '" class="' + (liked ? 'liked' : '') + '">' + (liked ? '♥' : '♡') + '</button>' +
+            '<button data-act="noop">💬</button>' +
+            '<button data-act="noop">✈</button>' +
+          '</div>' +
+          '<div class="ig-likes">' + (p.likes + (liked ? 1 : 0)) + ' 次赞</div>' +
+          '<div class="ig-cap"><b>' + esc(p.user) + '</b> ' + esc(p.cap) + '</div>' +
+        '</div>';
+      }).join('') +
+      '<div style="height:24px"></div>';
+  };
+
+  /* --- 通用信息流 --- */
+  function feedHTML(items) {
+    return '<div>' + items.map(function (p) {
+      var key = 'feed:' + p.id;
+      var liked = state.liked.has(key);
+      var media = p.src
+        ? '<img src="' + p.src + '" alt="">'
+        : '<div style="width:100%;height:100%;background:' + p.grad + '"></div>';
+      return '<div class="post">' +
+        '<div class="post-head">' +
+          '<div class="av" style="background:' + p.color + '">' + esc(p.av) + '</div>' +
+          '<div class="post-meta"><b>' + esc(p.user) + '</b><span>' + esc(p.handle || '') + ' ' + esc(p.time || '') + '</span></div>' +
+        '</div>' +
+        '<div class="post-text">' + esc(p.text) + '</div>' +
+        (p.grad || p.src ? '<div class="post-img">' + media + '</div>' : '') +
+        '<div class="post-actions">' +
+          '<button data-act="feedLike" data-id="' + p.id + '" class="' + (liked ? 'liked' : '') + '">♥ <span>' + (p.likes + (liked ? 1 : 0)) + '</span></button>' +
+          '<button data-act="noop">💬 <span>' + (p.replies || 0) + '</span></button>' +
+          '<button data-act="noop">↻ <span>' + (p.reposts || 0) + '</span></button>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  var X_POSTS = [
+    { id: 'x1', user: '林深', handle: '@linshen', time: '· 2小时', av: '林', color: '#5b8def', text: '有些事不该被翻出来。\n但既然你翻到了……', likes: 42, replies: 8, reposts: 3 },
+    { id: 'x2', user: '城市观察', handle: '@citywatch', time: '· 昨天', av: '城', color: '#2c2c2e', text: '长乐街片区将于下月启动拆除，居民可凭旧证件回访。', grad: 'linear-gradient(135deg,#3a6073,#16222a)', likes: 1280, replies: 96, reposts: 340 },
+    { id: 'x3', user: '苏晚', handle: '@suwan', time: '· 3天', av: '苏', color: '#ff7aa2', text: '三年前的今天，下着雨。', likes: 87, replies: 4, reposts: 1 }
+  ];
+
+  var THREADS_POSTS = [
+    { id: 't1', user: 'linshen', time: '2小时', av: '林', color: '#5b8def', text: '你手机修好了吗？', likes: 12, replies: 3 },
+    { id: 't2', user: 'suwan', time: '5小时', av: '苏', color: '#ff7aa2', text: '有些照片，拍下来就是错。', likes: 34, replies: 6 },
+    { id: 't3', user: 'citywatch', time: '1天', av: '城', color: '#3a3a3c', text: '长乐街的老楼今天开始围挡了。', grad: 'linear-gradient(135deg,#4b5563,#111827)', likes: 210, replies: 18 }
+  ];
+
+  var WEIBO_POSTS = [
+    { id: 'w1', user: '林深', handle: '· 关注', time: '· 40分钟前', av: '林', color: '#5b8def', text: '雨停了，长乐街的积水还没退。', likes: 1200, replies: 88, reposts: 21 },
+    { id: 'w2', user: '苏晚', handle: '· 关注', time: '· 2小时前', av: '苏', color: '#ff7aa2', text: '翻相册翻到凌晨三点。', likes: 340, replies: 15, reposts: 2 },
+    { id: 'w3', user: '本地新闻', handle: '· 热门', time: '· 今天', av: '新', color: '#e6162d', text: '【长乐街片区改造启动】涉及居民 312 户，回访需提前登记。', grad: 'linear-gradient(135deg,#ff5c6c,#7a1b25)', likes: 5320, replies: 421, reposts: 890 }
+  ];
+
+  RENDER.x = function () { return feedHTML(X_POSTS); };
+  RENDER.threads = function () { return feedHTML(THREADS_POSTS); };
+  RENDER.weibo = function () { return feedHTML(WEIBO_POSTS); };
+
+  /* --- 小红书 --- */
+  var XHS = [
+    { id: 'n1', title: '老房子改造前的最后一眼', grad: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)', likes: 1200, user: '阿树' },
+    { id: 'n2', title: '雨天拍照参数分享｜氛围感', grad: 'linear-gradient(135deg,#8e9eab,#eef2f3)', likes: 860, user: '光影' },
+    { id: 'n3', title: '长乐街 30 年老店合集', grad: 'linear-gradient(135deg,#f6d365,#fda085)', likes: 3200, user: '吃货日记' },
+    { id: 'n4', title: '我在这条街住了 20 年', grad: 'linear-gradient(135deg,#667eea,#764ba2)', likes: 540, user: '旧时光' },
+    { id: 'n5', title: '手机摄影｜第三张真的细思极恐', grad: 'linear-gradient(135deg,#403b4a,#c4b7a6)', likes: 8900, user: '悬疑君' },
+    { id: 'n6', title: '雨夜散步路线推荐', grad: 'linear-gradient(135deg,#6a3093,#a044ff)', likes: 430, user: '夜行人' }
+  ];
+  var xhsTab = '推荐';
+
+  RENDER.xhs = function () {
+    return '<div class="tabs">' +
+        ['推荐', '关注', '附近'].map(function (t) {
+          return '<span class="' + (xhsTab === t ? 'on' : '') + '" data-act="xhsTab" data-t="' + t + '">' + t + '</span>';
+        }).join('') +
+      '</div>' +
+      '<div class="xhs-grid">' +
+        XHS.map(function (p) {
+          var key = 'xhs:' + p.id;
+          var liked = state.liked.has(key);
+          var media = p.src
+            ? '<img src="' + p.src + '" alt="">'
+            : '<div style="width:100%;height:100%;background:' + p.grad + '"></div>';
+          return '<div class="xhs-card">' +
+            '<div class="xhs-cover">' + media + '</div>' +
+            '<div class="xhs-body">' +
+              '<div class="xhs-title">' + esc(p.title) + '</div>' +
+              '<div class="xhs-meta"><span>' + esc(p.user) + '</span>' +
+                '<button data-act="xhsLike" data-id="' + p.id + '" class="' + (liked ? 'liked' : '') + '">♥ ' + (p.likes + (liked ? 1 : 0)) + '</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+  };
+
+  /* --- 视频列表 --- */
+  var YT_VIDEOS = [
+    { id: 'v1', title: '长乐街拆迁前的最后一天', ch: '城市观察 · 12万次观看', dur: '08:24', grad: 'linear-gradient(135deg,#3a6073,#16222a)' },
+    { id: 'v2', title: '雨夜摄影 | 街头氛围感教学', ch: '光影笔记 · 5.6万次观看', dur: '12:07', grad: 'linear-gradient(135deg,#8e9eab,#eef2f3)' },
+    { id: 'v3', title: '老房子里的三件怪事', ch: '悬疑档案 · 88万次观看', dur: '21:45', grad: 'linear-gradient(135deg,#403b4a,#c4b7a6)' }
+  ];
+
+  function videoListHTML(list, brand) {
+    return '<div class="section-title">' + brand + '</div><div class="hint">推荐 · 全部可点播</div>' +
+      list.map(function (v) {
+        var media = v.src
+          ? '<img src="' + v.src + '" alt="">'
+          : '<div style="width:100%;height:100%;background:' + v.grad + '"></div>';
+        return '<div class="vid" data-act="openVideo" data-id="' + v.id + '">' +
+          '<div class="thumb">' + media + '<span class="dur">' + v.dur + '</span></div>' +
+          '<div class="vinfo"><div class="vtitle">' + esc(v.title) + '</div><div class="vsub">' + esc(v.ch) + '</div></div>' +
+        '</div>';
+      }).join('');
+  }
+
+  RENDER.youtube = function () { return videoListHTML(YT_VIDEOS, 'YouTube'); };
+
+  var BILI_VID
