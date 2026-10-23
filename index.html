@@ -1,125 +1,103 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Wonbin Phone</title>
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-body {
-  min-height: 100vh;
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 16px;
-}
-.iphone {
-  width: 375px;
-  height: 720px;
-  background: #1c1c1e;
-  border-radius: 44px;
-  padding: 60px 24px 40px;
-  position: relative;
-  overflow: hidden;
-  color: #fff;
-}
-.status-bar {
-  position: absolute;
-  top: 28px;
-  left: 32px;
-  right: 32px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-}
-.time-big {
-  font-size: 80px;
-  font-weight: 200;
-  margin-top: 20px;
-  line-height: 1;
-}
-.date-text {
-  font-size: 22px;
-  color: #ddd;
-  margin:8px 0 30px;
-}
-.widget {
-  background: rgba(255,255,255,0.14);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-radius: 22px;
-  padding:18px;
-  margin-bottom:16px;
-}
-.widget-title {
-  font-size:14px;
-  color:#eee;
-  margin-bottom:8px;
-}
-.birthday {
-  font-size:17px;
-}
-.weather {
-  display:flex;
-  justify-content: space-between;
-  align-items:center;
-  font-size:17px;
-}
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Phone · 故事模拟器</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="iphone">
-  <div class="status-bar">
-    <span id="sb-time">00:00</span>
-    <span>●●●</span>
-  </div>
-  <div id="main-time" class="time-big">00:00</div>
-  <div id="date" class="date-text">월요일 1월 1일</div>
 
-  <div class="widget">
-    <div class="widget-title">🎂 생일 카운트다운</div>
-    <div id="birthday-text" class="birthday">계산중...</div>
+<div id="phone" data-status="light">
+
+  <!-- 状态栏 -->
+  <div class="status">
+    <span id="statTime">9:41</span>
+    <span class="stat-right">
+      <span class="sig"><i></i><i></i><i></i><i></i></span>
+      <span class="wifi">◗</span>
+      <span class="bat"><b></b></span>
+    </span>
   </div>
 
-  <div class="widget">
-    <div class="widget-title">🌤 서울 날씨</div>
-    <div class="weather">
-      <span>맑음</span>
-      <span>20°</span>
+  <!-- ========== 锁屏 ========== -->
+  <section id="scr-lock" class="screen active">
+    <div class="lock-bg"></div>
+    <div class="lock-top">
+      <div class="lock-time" id="lockTime">9:41</div>
+      <div class="lock-date" id="lockDate">1月1日 星期一</div>
     </div>
-  </div>
+    <div class="lock-bottom">
+      <div class="lock-title">输入密码</div>
+      <div class="dots" id="dots">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="lock-msg" id="lockMsg"></div>
+      <div class="keypad" id="keypad"></div>
+      <div class="lock-hint">默认密码 1234</div>
+    </div>
+  </section>
+
+  <!-- ========== 主页 ========== -->
+  <section id="scr-home" class="screen">
+    <div class="home-bg"></div>
+    <div class="home-page">
+      <div class="app-grid" id="appGrid"></div>
+    </div>
+    <div class="dock" id="dock"></div>
+  </section>
+
+  <!-- ========== 应用容器 ========== -->
+  <section id="scr-app" class="screen">
+    <header class="app-bar">
+      <button class="nav-back" id="btnBack">‹</button>
+      <h1 id="appTitle">应用</h1>
+      <div class="app-actions" id="appActions"></div>
+    </header>
+    <div class="app-body" id="appBody"></div>
+  </section>
+
+  <!-- ========== 来电 ========== -->
+  <section id="scr-call" class="screen call-screen">
+    <div class="call-bg"></div>
+    <div class="call-inner">
+      <div class="call-state" id="callState">来电</div>
+      <div class="call-avatar" id="callAvatar">林</div>
+      <div class="call-name" id="callName">林深</div>
+      <div class="call-sub" id="callSub">邀请你进行 FaceTime 通话</div>
+
+      <div class="call-actions" id="callActions">
+        <div class="call-btn-wrap">
+          <button class="call-btn decline" id="btnDecline">✕</button>
+          <span>拒绝</span>
+        </div>
+        <div class="call-btn-wrap">
+          <button class="call-btn accept" id="btnAccept">✆</button>
+          <span>接听</span>
+        </div>
+      </div>
+
+      <div class="call-active hidden" id="callActive">
+        <div class="call-timer" id="callTimer">00:00</div>
+        <div class="call-lines" id="callLines"></div>
+        <div class="call-btn-wrap hangup-wrap">
+          <button class="call-btn hangup" id="btnHangup">✕</button>
+          <span>挂断</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 图片放大查看器 -->
+  <div class="viewer" id="viewer"></div>
+
+  <!-- 提示条 -->
+  <div class="toast" id="toast"></div>
+
 </div>
 
-<script>
-// 👉 여기 생일 날짜 바꿔주세요! 연,월,일
-const BIRTHDAY = new Date("2008-08-31");
-
-function updateClock(){
-  const now = new Date();
-  // 한국 시간 표시
-  const timeStr = now.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit', hour12:false});
-  const dateStr = now.toLocaleDateString('ko-KR', {weekday:'long', month:'long', day:'numeric'});
-  
-  document.getElementById("main-time").innerText = timeStr;
-  document.getElementById("sb-time").innerText = timeStr;
-  document.getElementById("date").innerText = dateStr;
-
-  // 생일 카운트다운
-  let thisYearBirth = new Date(now.getFullYear(), BIRTHDAY.getMonth(), BIRTHDAY.getDate());
-  if(thisYearBirth < now){
-    thisYearBirth.setFullYear(now.getFullYear()+1);
-  }
-  const diff = Math.ceil((thisYearBirth - now) / (1000*60*60*24));
-  document.getElementById("birthday-text").innerText = `원빈 생일까지 ${diff}일 남음`;
-}
-updateClock();
-setInterval(updateClock,1000);
-</script>
+<script src="app.js"></script>
 </body>
 </html>
